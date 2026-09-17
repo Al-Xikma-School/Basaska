@@ -534,6 +534,57 @@
         }
         .enable-sound-btn.hidden { display: none; }
 
+        /* ───── START GATE (single tap that both unlocks sound and opens the app) ───── */
+        .start-gate {
+            position: fixed;
+            inset: 0;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 22px;
+            background: linear-gradient(135deg, var(--dark-navy) 0%, #1a2f42 50%, var(--forest-green) 100%);
+            padding: 24px;
+            text-align: center;
+        }
+        .start-gate.hidden { display: none; }
+        .start-gate img.logo {
+            width: 78px;
+            height: 78px;
+            border-radius: 50%;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+        .start-gate h2 {
+            color: #fff;
+            font-size: 19px;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+        }
+        .start-gate .start-sub {
+            color: #b9c4cf;
+            font-size: 13px;
+            max-width: 260px;
+            line-height: 1.5;
+        }
+        .start-btn {
+            background: linear-gradient(135deg, var(--gold), #ffc94d);
+            color: var(--dark-navy);
+            border: none;
+            padding: 16px 46px;
+            border-radius: 40px;
+            font-family: 'Cairo', sans-serif;
+            font-size: 16px;
+            font-weight: 900;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(249,168,37,0.45);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: soundBtnPulse 1.8s ease-in-out infinite;
+        }
+        .start-btn:active { transform: scale(0.96); }
+
         /* ───── FAR-FROM-SCHOOL SCREEN ───── */
         .far-screen {
             padding: 34px 22px 28px;
@@ -612,6 +663,14 @@
 </head>
 <body>
 
+<!-- Start gate: single tap that unlocks sound AND opens the app -->
+<div class="start-gate" id="startGate">
+    <img src="10754.jpg" alt="Logo" class="logo">
+    <h2 id="startGateSchoolName">AL XIKMA SCHOOL</h2>
+    <div class="start-sub">Nidaamka Xaadirinta ee Dareewalada</div>
+    <button class="start-btn" id="startGateBtn">🔊 Bilow</button>
+</div>
+
 <!-- Particles -->
 <div class="particles" id="particles"></div>
 
@@ -640,7 +699,6 @@
         </div>
         <div class="locating-text" id="locatingText">Raadinaya Goobtaada<span class="locating-dots"><span>.</span><span>.</span><span>.</span></span></div>
         <div class="locating-sub">Fadlan sug, waxaan hubinaynaa in aad iskuulka joogto</div>
-        <button class="enable-sound-btn hidden" id="enableSoundBtn">🔊 Daar Codka</button>
     </div>
 
     <!-- Far-from-school screen -->
@@ -772,13 +830,11 @@
     };
 
     let audioUnlocked = false;
-    let pendingVoice   = null; // { key, fallbackText } — queued if user hasn't tapped "Daar Codka" yet
+    let pendingVoice   = null; // { key, fallbackText } — queued if audio isn't unlocked yet
 
     function unlockAudio() {
         if (audioUnlocked) return;
         audioUnlocked = true;
-        const btn = document.getElementById('enableSoundBtn');
-        if (btn) btn.classList.add('hidden');
         try { const t = new Audio(); t.play().catch(() => {}); } catch (e) {}
         if (pendingVoice) {
             const pv = pendingVoice;
@@ -786,33 +842,18 @@
             playVoice(pv.key, pv.fallbackText);
         }
     }
-    const enableSoundBtn = document.getElementById('enableSoundBtn');
-    if (enableSoundBtn) enableSoundBtn.addEventListener('click', unlockAudio);
-    /* Any tap/click anywhere also counts as unlocking the browser's audio permission */
-    document.addEventListener('click', unlockAudio, { once: true });
 
-    /* Isku day in codka si otomaatig ah loo daaro marka boggu shubmo — badhanka
-       "Daar Codka" wuxuu si qarsoon u sii jiraa (class hidden) oo kaliya wuxuu
-       muuqan doonaa haddii browser-ku diido in codka otomaatik loo daaro
-       (xaaladdaas ayaa loo baahan yahay taabasho). */
-    function tryAutoUnlockAudio() {
-        try {
-            const t = new Audio();
-            const p = t.play();
-            if (p && typeof p.then === 'function') {
-                p.then(() => { unlockAudio(); })
-                 .catch(() => { if (enableSoundBtn) enableSoundBtn.classList.remove('hidden'); });
-            } else {
-                unlockAudio();
-            }
-        } catch (e) {
-            if (enableSoundBtn) enableSoundBtn.classList.remove('hidden');
-        }
-    }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', tryAutoUnlockAudio);
-    } else {
-        tryAutoUnlockAudio();
+    /* ── Start gate: hal taabasho oo keliya ah — waxay daartaa codka
+       (taasoo browser-ku u baahan yahay taabasho dhab ah) ka dibna
+       si tartiib ah ayey u qariyaan gate-ka, iyadoo appku (raadinta
+       goobta, iwm) horeba u socday gadaasha. ── */
+    const startGate = document.getElementById('startGate');
+    const startGateBtn = document.getElementById('startGateBtn');
+    if (startGateBtn) {
+        startGateBtn.addEventListener('click', () => {
+            unlockAudio();
+            if (startGate) startGate.classList.add('hidden');
+        });
     }
 
     /* Plays the recorded mp3 for `key`; if it's missing/fails to load, falls back
@@ -864,6 +905,8 @@
         if (data) {
             SETTINGS = data;
             document.getElementById('displaySchoolName').innerText = SETTINGS.school_name || "AL XIKMA SCHOOL";
+            const gateNameEl = document.getElementById('startGateSchoolName');
+            if (gateNameEl) gateNameEl.innerText = SETTINGS.school_name || "AL XIKMA SCHOOL";
             startGPSWatch();
         }
     });
