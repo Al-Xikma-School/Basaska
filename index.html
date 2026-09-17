@@ -640,7 +640,7 @@
         </div>
         <div class="locating-text" id="locatingText">Raadinaya Goobtaada<span class="locating-dots"><span>.</span><span>.</span><span>.</span></span></div>
         <div class="locating-sub">Fadlan sug, waxaan hubinaynaa in aad iskuulka joogto</div>
-        <button class="enable-sound-btn" id="enableSoundBtn">🔊 Daar Codka</button>
+        <button class="enable-sound-btn hidden" id="enableSoundBtn">🔊 Daar Codka</button>
     </div>
 
     <!-- Far-from-school screen -->
@@ -790,6 +790,30 @@
     if (enableSoundBtn) enableSoundBtn.addEventListener('click', unlockAudio);
     /* Any tap/click anywhere also counts as unlocking the browser's audio permission */
     document.addEventListener('click', unlockAudio, { once: true });
+
+    /* Isku day in codka si otomaatig ah loo daaro marka boggu shubmo — badhanka
+       "Daar Codka" wuxuu si qarsoon u sii jiraa (class hidden) oo kaliya wuxuu
+       muuqan doonaa haddii browser-ku diido in codka otomaatik loo daaro
+       (xaaladdaas ayaa loo baahan yahay taabasho). */
+    function tryAutoUnlockAudio() {
+        try {
+            const t = new Audio();
+            const p = t.play();
+            if (p && typeof p.then === 'function') {
+                p.then(() => { unlockAudio(); })
+                 .catch(() => { if (enableSoundBtn) enableSoundBtn.classList.remove('hidden'); });
+            } else {
+                unlockAudio();
+            }
+        } catch (e) {
+            if (enableSoundBtn) enableSoundBtn.classList.remove('hidden');
+        }
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', tryAutoUnlockAudio);
+    } else {
+        tryAutoUnlockAudio();
+    }
 
     /* Plays the recorded mp3 for `key`; if it's missing/fails to load, falls back
        to browser text-to-speech reading `fallbackText`. */
